@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quiz</title>
+  <!-- <link rel="stylesheet" href="quiz.css" /> -->
+</head>
+<style>
+  /* New styles for start page and results page */
+.page {
+  max-width: 600px;
+  margin: 50px auto;
+  background: white;
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+  text-align: center;
+}
+
+.page input[type="text"] {
+  width: 80%;
+  padding: 10px;
+  margin: 15px 0;
+  font-size: 16px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.page button {
+  padding: 12px 25px;
+  font-size: 16px;
+  background: #4fd1c5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.page button:hover {
+  background: #38b2ac;
+}
+
+/* Cheating notification styles */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #ff6b6b;
+  color: white;
+  padding: 15px 25px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  font-weight: bold;
+  z-index: 1000;
+}
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(to bottom, #a0f1a7, #91e1ff);
+  margin: 0;
+  padding: 20px;
+}
+
+.quiz-container {
+  max-width: 900px;
+  margin: auto;
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.timer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #d3f9d8;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.sections {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.sections button {
+  flex: 1;
+  padding: 10px;
+  background: #4fd1c5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.sections .flagged {
+  background: #ff6b6b;
+}
+
+.question-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navigation button {
+  font-size: 24px;
+  background: #e6f7ff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.question-content {
+  flex-grow: 1;
+  margin: 0 20px;
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.options {
+  margin-top: 15px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.options button {
+  padding: 10px;
+  background: #b2f5ea;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.options button.selected {
+  background: #68d391;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: center;
+}
+.pagination button {
+  padding: 10px;
+  width: 40px;
+  border-radius: 5px;
+  border: none;
+  background: #e2e8f0;
+  cursor: pointer;
+}
+
+.pagination .active {
+  background: #68d391;
+}
+
+.pagination .flagged {
+  background: #fc8181;
+}
+
+</style>
+<body>
+  <!-- Start Page--> 
+  <div id="start-page" class="page">
+    <h1>Welcome to the Quiz</h1>
+    <label for="username">Enter your name:</label>
+    <input type="text" id="username" placeholder="Your name" />
+    <button id="start-btn">Start Quiz</button>
+  </div>
+
+  <!-- Quiz Container -->
+  <div class="quiz-container" id="quiz-container" style="display:none;">
+    <div class="timer">
+      <span>Time Left</span>
+      <div id="time">03:00</div>
+      <button onclick="submitQuiz()" id="submitBtn">Submit</button>
+    </div>
+    <div class="sections">
+      <button id="section1Btn">Section 1</button>
+      <button id="section2Btn">Section 2</button>
+      <button id="section3Btn">Section 3</button>
+      <button id="flaggedBtn" class="flagged">Flagged</button>
+    </div>
+    <div class="question-box">
+      <div class="navigation">
+        <button id="prevBtn">⬅</button>
+      </div>
+      <div class="question-content">
+        <div class="question-header">
+          <h2 id="question-title">Question 1</h2>
+          <button id="flagBtn">🚩</button>
+        </div>
+        <p id="question-text"></p>
+        <div class="options" id="options-container"></div>
+      </div>
+      <div class="navigation">
+        <button id="nextBtn">➡</button>
+      </div>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+  <!-- Results Page -->
+  <div id="results-page" class="page" style="display:none;">
+    <h1>Quiz Results</h1>
+    <p id="result-message"></p>
+    <p id="score-details"></p>
+    <button id="restart-btn">Restart Quiz</button>
+  </div>
+
+  <!-- Cheating Notification -->
+  <div id="cheat-notification" class="notification" style="display:none;">
+    <p>Cheating is not allowed! Please stay on the quiz page.</p>
+  </div>
+  <script>document.addEventListener("DOMContentLoaded", () => {
+  const allQuestions = [
+    {
+      text: "What does HTML stand for?",
+      options: [
+        "Hyper Text Markup Language",
+        "Home Tool Markup Language",
+        "Hyperlinks and Text Markup Language",
+        "Hyperlinking Text Marking Language"
+      ],
+      answer: 0,
+      selected: null,
+      flagged: false,
+    },
+    {
+      text: "Which HTML element is used to define the title of a document?",
+      options: ["<head>", "<title>", "<meta>", "<header>"],
+      answer: 1,
+      selected: null,
+      flagged: false,
+    },
+    {
+      text: "What does CSS stand for?",
+      options: [
+        "Creative Style Sheets",
+        "Cascading Style Sheets",
+        "Computer Style Sheets",
+        "Colorful Style Sheets"
+      ],
+      answer: 1,
+      selected: null,
+      flagged: false,
+    },
+    {
+      text: "Which property is used to change the background color in CSS?",
+      options: ["color", "background-color", "bgcolor", "background"],
+      answer: 1,
+      selected: null,
+      flagged: false,
+    },
+    {
+      text: "Inside which HTML element do we put the JavaScript?",
+      options: ["<js>", "<javascript>", "<script>", "<scripting>"],
+      answer: 2,
+      selected: null,
+      flagged: false,
+    },
+    {
+      text: "Which symbol is used for comments in JavaScript?",
+      options: ["//", "/* */", "#", "<!-- -->"],
+      answer: 0,
+      selected: null,
+      flagged: false,
+    },
+    {
+      text: "Which method is used to add an element at the end of an array in JavaScript?",
+      options: ["push()", "pop()", "shift()", "unshift()"],
+      answer: 0,
+      selected: null,
+      flagged: false,
+    },
+    {
+      text: "What is the correct syntax to select an element with id 'myId' in JavaScript?",
+      options: [
+        "document.getElementById('myId')",
+        "document.getElement('myId')",
+        "document.querySelector('#myId')",
+        "Both 1 and 3"
+      ],
+      answer: 3,
+      selected: null,
+      flagged: false,
+    },
+    {
+      text: "Which HTML attribute is used to define inline styles?",
+      options: ["class", "style", "font", "styles"],
+      answer: 1,
+      selected: null,
+      flagged: false,
+    },
+    {
+      text: "Which CSS property controls the text size?",
+      options: ["font-style", "text-size", "font-size", "text-style"],
+      answer: 2,
+      selected: null,
+      flagged: false,
+    }
+  ];
+
+  let questions = [];
+  let currentQuestion = 0;
+  let timer = 180; // 10 minutes in seconds
+  let countdown;
+  let userName = "";
+  let cheatDetected = false;
+    
+
+  const startPage = document.getElementById("start-page");
+  const quizContainer = document.getElementById("quiz-container");
+  const resultsPage = document.getElementById("results-page");
+  const cheatNotification = document.getElementById("cheat-notification");
+  const usernameInput = document.getElementById("username");
+  const startBtn = document.getElementById("start-btn");
+  const resultMessage = document.getElementById("result-message");
+  const scoreDetails = document.getElementById("score-details");
+  const restartBtn = document.getElementById("restart-btn");
+
+  document.getElementById("submitBtn").addEventListener("click", submitQuiz);
+  function submitQuiz() {
+    clearInterval(time);
+    alert("Quiz Submitted");
+  }
+
+  startBtn.addEventListener("click", () => {
+    const name = usernameInput.value.trim();
+    if (name === "") {
+      alert("Please enter your name to start the quiz.");
+      return;
+    }
+    userName = name;
+    startPage.style.display = "none";
+    quizContainer.style.display = "block";
+    initializeQuiz(allQuestions.length, false);
+    startTimer();
+    renderQuestion();
+    setupCheatDetection();
+  });
+
+  restartBtn.addEventListener("click", () => {
+    resultsPage.style.display = "none";
+    startPage.style.display = "block";
+    usernameInput.value = "";
+    resetQuiz();
+  });
+
+  // Add event listeners for navigation buttons
+  document.getElementById("prevBtn").addEventListener("click", () => {
+    prevQuestion();
+  });
+
+  document.getElementById("nextBtn").addEventListener("click", () => {
+    nextQuestion();
+  });
+
+  // Add event listener for flag button
+  document.getElementById("flagBtn").addEventListener("click", () => {
+    toggleFlag();
+  });
+
+  // Add event listeners for section buttons
+  document.getElementById("section1Btn").addEventListener("click", () => {
+    filterQuestionsBySection(1);
+  });
+
+  document.getElementById("section2Btn").addEventListener("click", () => {
+    filterQuestionsBySection(2);
+  });
+
+  document.getElementById("section3Btn").addEventListener("click", () => {
+    filterQuestionsBySection(3);
+  });
+
+  document.getElementById("flaggedBtn").addEventListener("click", () => {
+    filterFlaggedQuestions();
+  });
+
+  // Section filtering functions
+  function filterQuestionsBySection(sectionNumber) {
+    // For demo, assume questions are evenly divided into 3 sections
+    const sectionSize = Math.floor(allQuestions.length / 3);
+    const start = (sectionNumber - 1) * sectionSize;
+    const end = sectionNumber === 3 ? allQuestions.length : start + sectionSize;
+    questions = allQuestions.slice(start, end);
+    currentQuestion = 0;
+    renderQuestion();
+    updatePagination();
+  }
+
+  function filterFlaggedQuestions() {
+    questions = allQuestions.filter(q => q.flagged);
+    if (questions.length === 0) {
+      alert("No flagged questions.");
+      return;
+    }
+    currentQuestion = 0;
+    renderQuestion();
+    updatePagination();
+  }
+
+  function initializeQuiz(questionCount, randomize) {
+    allQuestions.forEach(q => {
+      q.selected = null;
+      q.flagged = false;
+    });
+
+    if (randomize) {
+      questions = shuffleArray(allQuestions).slice(0, questionCount);
+    } else {
+      questions = allQuestions.slice(0, questionCount);
+    }
+    currentQuestion = 0;
+  }
+
+  function shuffleArray(array) {
+    let arr = array.slice();
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function startTimer() {
+    timer = 180;
+    updateTimerDisplay();
+    countdown = setInterval(() => {
+      timer--;
+      if (timer <= 0) {
+        clearInterval(countdown);
+        alert("Time is up! The quiz will now end.");
+        submitQuiz();
+      } else {
+        updateTimerDisplay();
+      }
+    }, 1000);
+  }
+
+  function updateTimerDisplay() {
+    const minutes = Math.floor(timer / 60);
+    const seconds = timer % 60;
+    const timeDisplay = document.getElementById("time");
+    timeDisplay.textContent = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  }
+
+  function renderQuestion() {
+    const question = questions[currentQuestion];
+    document.getElementById("question-title").textContent = `Question ${currentQuestion + 1}`;
+    document.getElementById("question-text").textContent = question.text;
+
+    const optionsContainer = document.getElementById("options-container");
+    optionsContainer.innerHTML = "";
+    question.options.forEach((option, index) => {
+      const btn = document.createElement("button");
+      btn.textContent = option;
+      btn.className = question.selected === index ? "selected" : "";
+      btn.addEventListener("click", () => {
+        question.selected = index;
+        renderQuestion();
+      });
+      optionsContainer.appendChild(btn);
+    });
+
+    updatePagination();
+    updateFlagButton();
+  }
+
+  function updatePagination() {
+    const pagination = document.getElementById("pagination");
+    pagination.innerHTML = "";
+    questions.forEach((_, index) => {
+      const btn = document.createElement("button");
+      btn.textContent = index + 1;
+      btn.className = index === currentQuestion ? "active" : "";
+      if (questions[index].flagged) {
+        btn.classList.add("flagged");
+      }
+      btn.addEventListener("click", () => {
+        currentQuestion = index;
+        renderQuestion();
+      });
+      pagination.appendChild(btn);
+    });
+  }
+
+  function updateFlagButton() {
+    const flagBtn = document.getElementById("flagBtn");
+    flagBtn.textContent = questions[currentQuestion].flagged ? "🚩" : "🏳️";
+  }
+
+  function toggleFlag() {
+    questions[currentQuestion].flagged = !questions[currentQuestion].flagged;
+    updateFlagButton();
+    updatePagination();
+  }
+
+  function nextQuestion() {
+    if (currentQuestion < questions.length - 1) {
+      currentQuestion++;
+      renderQuestion();
+    }
+  }
+
+  function prevQuestion() {
+    if (currentQuestion > 0) {
+      currentQuestion--;
+      renderQuestion();
+    }
+  }
+
+  function submitQuiz() {
+    clearInterval(countdown);
+    quizContainer.style.display = "none";
+    resultsPage.style.display = "block";
+
+    let correctCount = 0;
+    let missedCount = 0;
+    questions.forEach(q => {
+      if (q.selected === q.answer) {
+        correctCount++;
+      } else {
+        missedCount++;
+      }
+    });
+
+    const percentage = ((correctCount / questions.length) * 100).toFixed(2);
+    resultMessage.textContent = `Thank you, ${userName}, for completing the quiz!`;
+    scoreDetails.textContent = `Correct: ${correctCount} | Missed: ${missedCount} | Percentage: ${percentage}%`;
+  }
+
+  function resetQuiz() {
+    questions = [];
+    currentQuestion = 0;
+    timer = 600;
+    clearInterval(countdown);
+    cheatNotification.style.display = "none";
+  }
+
+  function setupCheatDetection() {
+    window.addEventListener("blur", () => {
+      showCheatNotification();
+    });
+    window.addEventListener("focus", () => {
+      hideCheatNotification();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        showCheatNotification();
+      } else {
+        hideCheatNotification();
+      }
+    });
+  }
+
+  function showCheatNotification() {
+    cheatNotification.style.display = "block";
+  }
+
+  function hideCheatNotification() {
+    cheatNotification.style.display = "none";
+  }
+});
+
+</script>
+</body>
+</html>
